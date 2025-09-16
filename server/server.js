@@ -3,6 +3,15 @@ const http = require('http');
 const WebSocket = require('ws');
 const path = require('path');
 const { getQuestions } = require('./database');
+const rateLimit = require('express-rate-limit');
+
+// Rate limiter: limit repeated requests to root route.
+const rootLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
 
 const app = express();
 const server = http.createServer(app);
@@ -18,7 +27,7 @@ let timerInterval;
 let playersAnswered = new Set();
 
 // Servir el archivo HTML principal cuando se accede a la ruta raíz.
-app.get('/', (req, res) => {
+app.get('/', rootLimiter, (req, res) => {
     // Asegúrate de que index.html esté en la carpeta principal,
     // fuera de la carpeta 'trivia-server'.
     res.sendFile(path.join(__dirname, '..', 'index.html'));
