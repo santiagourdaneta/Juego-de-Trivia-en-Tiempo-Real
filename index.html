@@ -105,6 +105,17 @@
     let currentQuestionData = {};
     let score = 0;
 
+    // Simple HTML escaping to prevent XSS
+    function sanitizeInput(str) {
+        if (typeof str !== "string") return str;
+        return str
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
     // ******************************************************
     // *** Lógica para mostrar mensajes en pantalla (como alertas, pero mejores) ***
     // ******************************************************
@@ -177,7 +188,7 @@
                     <h3 class="col-6 text-right">Tiempo: <span id="timer">${data.timer}</span>s</h3>
                 </div>
                 <progress id="timer-bar" value="100" max="100"></progress>
-                <h4 id="question-text">${data.question}</h4>
+                <h4 id="question-text">${sanitizeInput(data.question)}</h4>
                 <div id="options">
                     ${data.options.map(option => {
                         const sanitizedOption = sanitizeInput(option);
