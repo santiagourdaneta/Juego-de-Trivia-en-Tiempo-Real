@@ -1,0 +1,16 @@
+Directorios de dependencias
+node_modules/
+
+Archivos de la base de datos
+*.db
+*.sqlite
+*.sqlite3
+
+Archivos de registro y depuración
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+Archivos del sistema operativo y temporales
+.DS_Store
+Thumbs.db

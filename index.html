@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Meta tags para SEO y redes sociales (Open Graphs) -->
+    <title>Juego de Trivia en Vivo 🧠</title>
+    <meta name="description" content="Juega a este emocionante juego de preguntas y respuestas en tiempo real. ¡Pon a prueba tus conocimientos!">
+    <meta name="keywords" content="trivia, juego, preguntas, respuestas, quiz, en vivo, online, tiempo real">
+    
+    <!-- Open Graph para Facebook, LinkedIn, WhatsApp -->
+    <meta property="og:title" content="Juego de Trivia en Vivo 🚀">
+    <meta property="og:description" content="¡Desafía a tus amigos con preguntas en tiempo real!">
+    <meta property="og:image" content="https://placehold.co/1200x630/000000/FFFFFF?text=Juego+de+Trivia">
+    <meta property="og:url" content="http://tusitioweb.com">
+    <meta property="og:type" content="website">
+
+    <!-- Twitter Cards -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Juego de Trivia en Vivo 🚀">
+    <meta name="twitter:description" content="¡Desafía a tus amigos con preguntas en tiempo real! ¡A ver quién sabe más!">
+    <meta name="twitter:image" content="https://placehold.co/1200x630/000000/FFFFFF?text=Juego+de+Trivia">
+
+    <!-- Framework CSS Ligero -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --pico-font-family: 'Inter', sans-serif;
+        }
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        main {
+            width: 100%;
+            max-width: 800px;
+            padding: 2rem;
+        }
+        .card {
+            border-radius: 10px;
+            padding: 2rem;
+        }
+        .timer-bar {
+            width: 100%;
+            height: 10px;
+            background-color: var(--pico-muted-border-color);
+            border-radius: 5px;
+            margin-top: 1rem;
+        }
+        .timer-fill {
+            height: 100%;
+            background-color: var(--pico-primary);
+            width: 100%;
+            border-radius: 5px;
+            transition: width 0.5s linear;
+        }
+        #options button {
+            width: 100%;
+            margin-bottom: 1rem;
+            text-align: left;
+            border-radius: 8px;
+            transition: background-color 0.3s ease;
+        }
+        #options button.correct {
+            background-color: var(--pico-success);
+        }
+        #options button.wrong {
+            background-color: var(--pico-danger);
+        }
+        .message-box {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 1rem;
+            border-radius: 8px;
+            z-index: 1000;
+        }
+        .message-box.success {
+            background-color: var(--pico-success);
+            color: white;
+        }
+        .message-box.error {
+            background-color: var(--pico-danger);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+<main class="container">
+    <div id="game-container">
+        <!-- Contenido dinámico del juego -->
+    </div>
+</main>
+
+<script>
+    const gameContainer = document.getElementById('game-container');
+    const ws = new WebSocket('ws://localhost:3000');
+    let currentQuestionData = {};
+    let score = 0;
+
+    // ******************************************************
+    // *** Lógica para mostrar mensajes en pantalla (como alertas, pero mejores) ***
+    // ******************************************************
+    function showMessage(text, type = 'success') {
+        const messageBox = document.createElement('div');
+        messageBox.className = `message-box ${type}`;
+        messageBox.textContent = text;
+        document.body.appendChild(messageBox);
+        setTimeout(() => {
+            messageBox.remove();
+        }, 3000);
+    }
+
+    // ******************************************************
+    // *** Lógica para el juego: Recibir mensajes del servidor ***
+    // ******************************************************
+    ws.onopen = () => {
+        console.log('Conectado al servidor WebSocket');
+        showWaitingScreen();
+    };
+
+    ws.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+
+        switch (message.type) {
+            case 'new_question':
+                currentQuestionData = message;
+                showQuestion(message);
+                break;
+            case 'timer_tick':
+                updateTimer(message.time);
+                break;
+            case 'answer_result':
+                handleAnswerResult(message.result);
+                break;
+            case 'game_over':
+                endGame(message.scores);
+                break;
+            case 'message':
+                showMessage(message.text);
+                break;
+            default:
+                console.log('Mensaje desconocido:', message);
+        }
+    };
+
+    ws.onclose = () => {
+        console.log('Desconectado del servidor.');
+        showDisconnectedScreen();
+    };
+
+    ws.onerror = (error) => {
+        console.error('Error en WebSocket:', error);
+    };
+
+    function showWaitingScreen() {
+        gameContainer.innerHTML = `
+            <div class="card text-center">
+                <h2>Esperando a que el juego comience...</h2>
+                <p>El juego comenzará automáticamente cuando el primer jugador se una.</p>
+            </div>
+        `;
+    }
+
+    function showQuestion(data) {
+        gameContainer.innerHTML = `
+            <div class="card">
+                <div class="grid">
+                    <h3 class="col-6">Puntuación: <span id="score">${score}</span></h3>
+                    <h3 class="col-6 text-right">Tiempo: <span id="timer">${data.timer}</span>s</h3>
+                </div>
+                <progress id="timer-bar" value="100" max="100"></progress>
+                <h4 id="question-text">${data.question}</h4>
+                <div id="options">
+                    ${data.options.map(option => {
+                        const sanitizedOption = sanitizeInput(option);
+                        return `<button class="btn-secondary" data-option="${sanitizedOption}">${sanitizedOption}</button>`;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+
+        document.querySelectorAll('#options button').forEach(button => {
+            button.addEventListener('click', () => sendAnswer(button.dataset.option));
+        });
+    }
+
+    function updateTimer(time) {
+        const timerElement = document.getElementById('timer');
+        const timerBar = document.getElementById('timer-bar');
+        if (timerElement) timerElement.textContent = time;
+        if (timerBar) timerBar.value = (time / 15) * 100;
+    }
+
+    function sendAnswer(answer) {
+        // Deshabilita los botones para evitar múltiples clics
+        document.querySelectorAll('#options button').forEach(button => button.disabled = true);
+        
+        // Envía la respuesta al servidor
+        ws.send(JSON.stringify({
+            type: 'answer',
+            payload: {
+                question: currentQuestionData.question,
+                answer: answer
+            }
+        }));
+    }
+
+    function handleAnswerResult(result) {
+        const buttons = document.querySelectorAll('#options button');
+        buttons.forEach(button => {
+            if (button.dataset.option === currentQuestionData.options[currentQuestionData.options.indexOf(currentQuestionData.answer)]) {
+                button.classList.add('correct');
+            }
+            if (result === 'correct') {
+                score++;
+                showMessage('¡Respuesta correcta!', 'success');
+            } else {
+                button.classList.add('wrong');
+                showMessage('Respuesta incorrecta.', 'error');
+            }
+        });
+        document.getElementById('score').textContent = score;
+    }
+
+    function endGame(scores) {
+        const leaderboardHtml = Object.entries(scores)
+            .sort(([, a], [, b]) => b - a)
+            .map(([playerId, playerScore]) => `<li>Jugador ${playerId}: ${playerScore} puntos</li>`)
+            .join('');
+
+        gameContainer.innerHTML = `
+            <div class="card text-center">
+                <h2>¡Juego Terminado!</h2>
+                <p>Tu puntuación final es: <span id="final-score">${score}</span></p>
+                <h3>Marcador</h3>
+                <ul>${leaderboardHtml}</ul>
+                <p>El juego se reiniciará en unos segundos...</p>
+            </div>
+        `;
+    }
+
+    function showDisconnectedScreen() {
+        gameContainer.innerHTML = `
+            <div class="card text-center">
+                <h2>¡Desconectado!</h2>
+                <p>No se pudo conectar con el servidor del juego. Asegúrate de que está funcionando.</p>
+                <p>Inténtalo de nuevo en unos momentos.</p>
+            </div>
+        `;
+    }
+
+    // ******************************************************
+    // *** Funciones para seguridad y rendimiento ***
+    // ******************************************************
+    
+    // Evita ataques XSS sanitizando el input
+    function sanitizeInput(text) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#x27;',
+            '/': '&#x2F;',
+        };
+        return String(text).replace(/[&<>"'/]/g, m => map[m]);
+    }
+</script>
+</body>
+</html>
