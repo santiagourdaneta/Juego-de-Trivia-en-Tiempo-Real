@@ -185,7 +185,7 @@
             <div class="card">
                 <div class="grid">
                     <h3 class="col-6">Puntuación: <span id="score">${score}</span></h3>
-                    <h3 class="col-6 text-right">Tiempo: <span id="timer">${Number.isFinite(data.timer) ? data.timer : 0}</span>s</h3>
+                    <h3 class="col-6 text-right">Tiempo: <span id="timer">${Number.isFinite(Number(data.timer)) ? Number(data.timer) : 0}</span>s</h3>
                 </div>
                 <progress id="timer-bar" value="100" max="100"></progress>
                 <h4 id="question-text">${sanitizeInput(data.question)}</h4>
