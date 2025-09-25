@@ -181,22 +181,70 @@
     }
 
     function showQuestion(data) {
-        gameContainer.innerHTML = `
-            <div class="card">
-                <div class="grid">
-                    <h3 class="col-6">Puntuación: <span id="score">${score}</span></h3>
-                    <h3 class="col-6 text-right">Tiempo: <span id="timer">${Number.isFinite(Number(data.timer)) ? Number(data.timer) : 0}</span>s</h3>
-                </div>
-                <progress id="timer-bar" value="100" max="100"></progress>
-                <h4 id="question-text">${sanitizeInput(data.question)}</h4>
-                <div id="options">
-                    ${data.options.map(option => {
-                        const sanitizedOption = sanitizeInput(option);
-                        return `<button class="btn-secondary" data-option="${sanitizedOption}">${sanitizedOption}</button>`;
-                    }).join('')}
-                </div>
-            </div>
-        `;
+        // Remove previous content
+        gameContainer.textContent = "";
+
+        // Card container
+        const card = document.createElement('div');
+        card.className = "card";
+
+        // Grid row (score and timer)
+        const grid = document.createElement('div');
+        grid.className = "grid";
+
+        const scoreH3 = document.createElement('h3');
+        scoreH3.className = "col-6";
+        scoreH3.textContent = "Puntuación: ";
+        const scoreSpan = document.createElement('span');
+        scoreSpan.id = "score";
+        scoreSpan.textContent = score;
+        scoreH3.appendChild(scoreSpan);
+
+        const timerH3 = document.createElement('h3');
+        timerH3.className = "col-6 text-right";
+        timerH3.textContent = "Tiempo: ";
+        const timerSpan = document.createElement('span');
+        timerSpan.id = "timer";
+        timerSpan.textContent = Number.isFinite(Number(data.timer)) ? Number(data.timer) : 0;
+        timerH3.appendChild(timerSpan);
+        timerH3.append("s");
+
+        grid.appendChild(scoreH3);
+        grid.appendChild(timerH3);
+
+        card.appendChild(grid);
+
+        // Timer progress
+        const progress = document.createElement('progress');
+        progress.id = "timer-bar";
+        progress.max = 100;
+        progress.value = 100;
+        card.appendChild(progress);
+
+        // Question text
+        const questionH4 = document.createElement('h4');
+        questionH4.id = "question-text";
+        questionH4.textContent = typeof data.question === "string" ? data.question : "";
+        card.appendChild(questionH4);
+
+        // Options container
+        const optionsDiv = document.createElement('div');
+        optionsDiv.id = "options";
+
+        if (Array.isArray(data.options)) {
+            data.options.forEach(option => {
+                const btn = document.createElement('button');
+                btn.className = "btn-secondary";
+                btn.setAttribute("data-option", typeof option === "string" ? option : "");
+                btn.textContent = typeof option === "string" ? option : "";
+                optionsDiv.appendChild(btn);
+            });
+        }
+
+        card.appendChild(optionsDiv);
+
+        // Insert card into container
+        gameContainer.appendChild(card);
 
         document.querySelectorAll('#options button').forEach(button => {
             button.addEventListener('click', () => sendAnswer(button.dataset.option));
